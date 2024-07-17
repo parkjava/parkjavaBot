@@ -5,7 +5,7 @@ import pytesseract
 import PIL
 plt.style.use('dark_background')
 #사진 흑백화 
-img = cv2.imread('car33.jpg')
+img = cv2.imread('/Users/youngwonchoi/Desktop/20240307/01.FinalProject/ML/hyunjun/car44.jpg')
 height, width, channel = img.shape
 
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

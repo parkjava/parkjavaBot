@@ -6,7 +6,7 @@ import pytesseract
 import re
 plt.style.use('dark_background')
 
-img_ori = cv2.imread('car55.png')
+img_ori = cv2.imread('/Users/youngwonchoi/Desktop/20240307/01.FinalProject/ML/hyunjun/car44.jpg')
 
 height, width, channel = img_ori.shape
 
@@ -251,7 +251,7 @@ for i, plate_img in enumerate(plate_imgs):
     _, img_result = cv2.threshold(img_result, thresh=0.0, maxval=255.0, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     img_result = cv2.copyMakeBorder(img_result, top=10, bottom=10, left=10, right=10, borderType=cv2.BORDER_CONSTANT, value=(0,0,0))
     
-    pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files/Tesseract-OCR/tesseract.exe'
+    pytesseract.tesseract_cmd = '/opt/homebrew/Cellar/tesseract/5.4.1/share/tessdata' #TesseractNotFoundError: tesseract is not installed or it's not in your PATH. See README file for more information. 에러 메시지 나올 경우
     chars = pytesseract.image_to_string(img_result, lang='kor', config='--psm 7 --oem 0')
     
     result_chars = ''

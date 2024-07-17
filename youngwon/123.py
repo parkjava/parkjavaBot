@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 def detect(img):
-    img = cv2.imread('39거5639-2.jpg')
+    img = cv2.imread('/Users/youngwonchoi/Desktop/20240307/01.FinalProject/ML/image')
     height, width = img.shape
     channel = 1
     

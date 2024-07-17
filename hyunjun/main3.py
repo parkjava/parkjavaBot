@@ -5,7 +5,7 @@ import pytesseract
 
 plt.style.use('dark_background')
 
-img_ori = cv2.imread('car55.png')
+img_ori = cv2.imread('/Users/youngwonchoi/Desktop/20240307/01.FinalProject/ML/hyunjun/car44.jpg')
 height, width, channel = img_ori.shape
 
 gray = cv2.cvtColor(img_ori,cv2.COLOR_BGR2GRAY)
@@ -88,7 +88,7 @@ for d in contours_dict:
 temp_result = np.zeros((height, width, channel), dtype=np.uint8)
 
 for d in possible_contours:
-#     cv2.drawContours(temp_result, d['contour'], -1, (255, 255, 255))
+    cv2.drawContours(temp_result, d['contour'], -1, (255, 255, 255))
     cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x']+d['w'], d['y']+d['h']), color=(255, 255, 255), thickness=2)
 
 
