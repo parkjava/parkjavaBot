@@ -11,7 +11,7 @@
  
 # 해당 확장자 파일 전체 제외
 /*.jpg
-youngwon/*.json
+/youngwon/*.json
 /*.png
 
 # 예외
