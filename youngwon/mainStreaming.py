@@ -361,7 +361,45 @@ while True:
             
             cv2.rectangle(frame, (x, y), (x + w, y + h),(163, 100, 231), 3)
 
-        
+            img_result = plate_img[plate_min_y:plate_max_y, plate_min_x:plate_max_x]
+
+        #tesseract를 사용한 번호판 문자열 검출
+            img_result = cv2.GaussianBlur(img_result, ksize=(3, 3), sigmaX=0)
+            _, img_result = cv2.threshold(img_result, thresh=0.0, maxval=255.0, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+            img_result = cv2.copyMakeBorder(img_result, top=10, bottom=10, left=10, right=10, borderType=cv2.BORDER_CONSTANT, value=(0,0,0))
+            
+            pytesseract.tesseract_cmd = '/opt/homebrew/Cellar/tesseract/5.4.1/share/tessdata' #TesseractNotFoundError: tesseract is not installed or it's not in your PATH. See README file for more information. 에러 메시지 나올 경우
+            chars = pytesseract.image_to_string(img_result, lang='kor', config='--psm 7 --oem 0')
+            
+
+            text_list = [ord('가'), ord('나'), ord('다'), ord('라'), ord('마'),ord('거'), ord('너'), ord('더'), ord('러'), 
+                         ord('머'), ord('버'), ord('서'), ord('어'), ord('저'), ord('고'), ord('노'), ord('도'), ord('로'), 
+                         ord('모'), ord('보'), ord('소'), ord('오'),ord('조'), ord('구'), ord('누'), ord('두'), ord('루'), 
+                         ord('무'), '1','2','3','4','5','6','7','8','9','0',ord('아'), ord('바'), ord('사'), ord('자'), 
+                         ord('하'), ord('허'), ord('호'), ord('배'), ord('부'), ord('수'), ord('우'), ord('주'),ord('육'),ord('해'),ord('공')]
+            result_chars = ''
+            
+            has_digit = False
+            for c in chars:
+                if ord(c) in text_list or c.isdigit():
+                    if c.isdigit():
+                        has_digit = True
+                    result_chars += c
+
+            if len(result_chars) >= 7:
+                print(result_chars)
+            plate_chars.append(result_chars)
+
+            if has_digit and len(result_chars) > longest_text:
+                longest_idx = i
+
+            plt.subplot(len(plate_imgs), 1, i+1)
+            plt.imshow(img_result, cmap='gray')
+
+            info = plate_infos[longest_idx]
+            chars = plate_chars[longest_idx]
+
+            img_out = frame.copy()
 
         # info = plate_infos[longest_idx]
 
