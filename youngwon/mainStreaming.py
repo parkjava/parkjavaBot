@@ -306,9 +306,9 @@ while True:
                 center=(int(plate_cx), int(plate_cy))
             )
 
-            if img_cropped.shape[1] / img_cropped.shape[0] < MIN_PLATE_RATIO or img_cropped.shape[1] / img_cropped.shape[
-                0] < MIN_PLATE_RATIO > MAX_PLATE_RATIO:
-                continue
+            # if img_cropped.shape[1] / img_cropped.shape[0] < MIN_PLATE_RATIO or img_cropped.shape[1] / img_cropped.shape[
+            #     0] < MIN_PLATE_RATIO > MAX_PLATE_RATIO:
+            #     continue
 
             plate_imgs.append(img_cropped)
 
