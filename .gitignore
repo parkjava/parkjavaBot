@@ -10,9 +10,9 @@
 #폴더명/
  
 # 해당 확장자 파일 전체 제외
-*.jpg
-*.json
-*.png
- 
+/*.jpg
+youngwon/*.json
+/*.png
+
 # 예외
 #!제외할 파일명.txt
