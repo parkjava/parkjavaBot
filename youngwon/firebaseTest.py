@@ -14,5 +14,9 @@ blob.upload_from_filename(fileName)
 blob.make_public()
 
 print("your file url", blob.public_url)
+blobs = bucket.list_blobs()
 
+# List all files in the bucket
+for blob in blobs:
+    print(blob.name)
 # https://storage.googleapis.com/parkjavastorage.appspot.com/{saveName}

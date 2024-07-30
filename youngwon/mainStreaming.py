@@ -4,10 +4,17 @@ import matplotlib.pyplot as plt
 import pytesseract
 import time
 from urllib.request import urlopen
+from firebase_admin import credentials, initialize_app, storage
 import threading
+import re
+
+plt.ioff()  # 상호작용 모드 끄기
 
 # 스트림 URL 설정
-url = "http://192.168.0.12:8080/stream?topic=/csi_cam_0/image_raw"
+url = "http://192.168.137.6:8080/stream?topic=/csi_cam_1/image_raw"
+
+cred = credentials.Certificate("./parkjavastorage-firebase-adminsdk-rttma-90b24d3ed3.json")
+initialize_app(cred, {'storageBucket': 'parkjavastorage.appspot.com'})
 
 class VideoStream:
     def __init__(self, url):
@@ -159,7 +166,6 @@ while True:
         # # plt.figure(figsize=(12,10))
         # # plt.imshow(temp_result, cmap='gray')
 
-
         MIN_AREA = 100
         MIN_WIDTH, MIN_HEIGHT = 3, 10
         MIN_RATIO, MAX_RATIO = 0.25, 1.0
@@ -194,7 +200,6 @@ while True:
         MAX_WIDTH_DIFF = 0.8
         MAX_HEIGHT_DIFF = 0.2
         MIN_N_MATCHED = 6
-
 
         def find_chars(contour_list):
             matched_result_idx = []
@@ -261,7 +266,7 @@ while True:
                 cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x'] + d['w'], d['y'] + d['h']), color=(255, 255, 255),
                             thickness=1)
 
-        PLATE_WIDTH_PADDING = 1.2  # 1.3
+        PLATE_WIDTH_PADDING = 1.0  # 1.3
         PLATE_HEIGHT_PADDING = 1.2  # 1.5
         MIN_PLATE_RATIO = 5
         MAX_PLATE_RATIO = 10
@@ -295,7 +300,8 @@ while True:
 
             rotation_matrix = cv2.getRotationMatrix2D(center=(plate_cx, plate_cy), angle=angle, scale=0.95)
 
-            
+    
+
             img_rotated = cv2.warpAffine(img_thresh, M=rotation_matrix, dsize=(width, height))
 
             # print(img_rotated)
@@ -311,7 +317,7 @@ while True:
             #     continue
 
             plate_imgs.append(img_cropped)
-
+            
             plate_infos.append({
                 'x': int(plate_cx - plate_width / 2),
                 'y': int(plate_cy - plate_height / 2),
@@ -364,14 +370,14 @@ while True:
             img_result = plate_img[plate_min_y:plate_max_y, plate_min_x:plate_max_x]
 
         #tesseract를 사용한 번호판 문자열 검출
-            img_result = cv2.GaussianBlur(img_result, ksize=(3, 3), sigmaX=0)
+            img_result = cv2.GaussianBlur(img_result, ksize=(5, 5), sigmaX=0)
             _, img_result = cv2.threshold(img_result, thresh=0.0, maxval=255.0, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
             img_result = cv2.copyMakeBorder(img_result, top=10, bottom=10, left=10, right=10, borderType=cv2.BORDER_CONSTANT, value=(0,0,0))
             
             pytesseract.tesseract_cmd = '/opt/homebrew/Cellar/tesseract/5.4.1/share/tessdata' #TesseractNotFoundError: tesseract is not installed or it's not in your PATH. See README file for more information. 에러 메시지 나올 경우
-            chars = pytesseract.image_to_string(img_result, lang='kor', config='--psm 7 --oem 0')
+            chars = pytesseract.image_to_string(img_result, lang='kor', config='--psm 6 --oem 3')
             
-
+            
             text_list = [ord('가'), ord('나'), ord('다'), ord('라'), ord('마'),ord('거'), ord('너'), ord('더'), ord('러'), 
                          ord('머'), ord('버'), ord('서'), ord('어'), ord('저'), ord('고'), ord('노'), ord('도'), ord('로'), 
                          ord('모'), ord('보'), ord('소'), ord('오'),ord('조'), ord('구'), ord('누'), ord('두'), ord('루'), 
@@ -380,24 +386,55 @@ while True:
             result_chars = ''
             
             has_digit = False
+
+            numberPattern = re.compile(r'^\d{2,3}[가-힣]\d{4}$')
+            
+            
+
+            
             for c in chars:
                 if ord(c) in text_list or c.isdigit():
                     if c.isdigit():
                         has_digit = True
                     result_chars += c
 
-            if len(result_chars) >= 7:
-                print(result_chars)
-            plate_chars.append(result_chars)
+            if numberPattern.match(result_chars): # 넘버 패턴 정규식에 번호판 문자열이 맞는지?                
+                if len(result_chars) == 7 or len(result_chars) == 8: # 번호판 문자열이 7 or 8글자인지?
+                    plate_chars.append(result_chars) # 번호판 문자열 리스트에 추가
+                    bucket = storage.bucket()  # 파이어베이스 스토리지 불러오기
+                    blobs = bucket.list_blobs( ) # 파이어베이스 스토리지의 리스트 
+                    blobList = [blob.name for blob in blobs] # 스토리지의 사진 이름 반복문으로 blobList에 넣기
+                    if result_chars in plate_chars[0]: # 검출된 번호가 번호판 문자열 첫번째에 있다면
+                        if result_chars in blobList: # 파이어베이스 스토리지의 저장되어있는 사진리스트에 번호판문자열과 같은 이름이 있을 때
+                            print(result_chars, '이미 추가되어 있는 데이터임') 
+                        else:
+                            try:
+                                fileName = result_chars + ".jpg" # 파일이름 = 번호판.jpg
+                                saveImg = cv2.imwrite(fileName, img_result) # 이미지 저장한다.
+                                
+                                if not saveImg:
+                                    print(f"Error saving image {fileName}") # saveImg 없으면 
+                                
+                                else:
+                                    saveName = result_chars # 파이어베이스에 저장할 이름 = 번호판문자열
+                                    blob = bucket.blob(saveName) 
+                                    blob.upload_from_filename(fileName)
+                                    blob.make_public()
+                                    print(saveName, blob.public_url)
+                            except Exception as e:
+                                print(f"An error occurred: {e}")
+                else:
+                    pass
+
+            
 
             if has_digit and len(result_chars) > longest_text:
                 longest_idx = i
 
-            plt.subplot(len(plate_imgs), 1, i+1)
+            # plt.subplot(len(plate_imgs), 1, i+1)
             plt.imshow(img_result, cmap='gray')
-
             info = plate_infos[longest_idx]
-            chars = plate_chars[longest_idx]
+            # chars = plate_chars[longest_idx]
 
             img_out = frame.copy()
 
@@ -405,9 +442,8 @@ while True:
 
         # cv2.rectangle(img_cropped, pt1=int((plate_infos['x'], plate_infos['y']), pt2=(plate_infos['x']+plate_infos['w'], plate_infos['y']+plate_infos['h'])), color=(255,0,0), thickness=2)
         cv2.imshow("FIND NUMBER", img_cropped)
-        # cv2.imwrite(str(i) + '.jpg',img_cropped)
+        
         cv2.imshow("FRAME", frame)
-
 
         # 'q' 키를 누르면 루프 종료
         key = cv2.waitKey(1)
@@ -421,3 +457,18 @@ cv2.destroyAllWindows()
 thread.join()
 
 # 한양 헤드라인 장평 90%로 하면 유사합니다
+
+# 0: 자동 페이지 세그멘테이션, 오존 표식을 사용
+# 1: 자동 페이지 세그멘테이션, 오존 표식을 사용
+# 2: 자동 페이지 세그멘테이션, 최대 2개의 열을 지원
+# 3: 자동 페이지 세그멘테이션, 표식 없음
+# 4: 고정 너비의 단일 열 텍스트
+# 5: 단일 열 텍스트
+# 6: 단일 균형 텍스트 블록
+# 7: 수직 및 수평의 모든 블록을 탐색
+# 8: 단일 열의 모든 텍스트를 인식 (위치 정보를 저장하지 않음)
+# 9: 단일 열 텍스트, 페이지 내 위치를 포함한 인식
+# 10: 텍스트 블록으로 페이지를 인식하고, 전역 레이아웃 분석
+# 11: 리스트 및 일련의 항목
+# 12: 텍스트 영역으로 페이지를 분석
+# 13: 페이지에서 각 블록을 추출
